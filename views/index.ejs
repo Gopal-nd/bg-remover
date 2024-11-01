@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Background Remover</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+  <div class="container mx-auto px-4 py-12">
+    <h1 class="text-5xl font-bold text-center text-white mb-12 tracking-tight">
+      Background Remover
+      <span class="block text-2xl mt-2 text-blue-400 font-normal">Upload an image to remove its background</span>
+    </h1>
+
+    <div id="error-message" class="hidden max-w-2xl mx-auto mb-4 bg-red-500 text-white p-4 rounded-lg">
+      An error occurred. Please try again.
+    </div>
+
+    <form id="upload-form" action="/upload" method="POST" enctype="multipart/form-data" class="max-w-2xl mx-auto bg-gray-800 p-8 rounded-xl shadow-2xl">
+      <div class="mb-8">
+        <label class="block w-full cursor-pointer">
+          <input type="file" name="image" class="hidden" required onchange="previewImage(event)" accept="image/*">
+          <div class="border-2 border-dashed border-blue-400 rounded-xl p-8 text-center hover:border-blue-500 transition duration-300">
+            <div class="text-blue-400 mb-4">
+              <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+              </svg>
+            </div>
+            <p class="text-lg text-gray-300">Drop your image here or click to browse</p>
+          </div>
+        </label>
+        <img id="preview" class="max-w-2xl w-full mt-6 mx-auto hidden rounded-lg shadow-xl">
+      </div>
+      <button id="submit-btn" type="submit" class="w-full bg-blue-600 text-white py-3 px-6 rounded-lg text-lg font-semibold hover:bg-blue-700 transform hover:scale-105 transition duration-300 shadow-lg">
+        Remove Background
+      </button>
+      <div id="loading" class="hidden w-full text-center">
+        <div class="animate-spin inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full my-4"></div>
+        <p class="text-gray-300">Processing your image...</p>
+      </div>
+    </form>
+    
+    <div id="results" class="mt-16">
+      <%_ if (outputImage) { _%>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          <div class="bg-gray-800 p-6 rounded-xl shadow-2xl">
+            <h3 class="text-2xl font-semibold text-blue-400 mb-6">Original Image</h3>
+            <div class="relative group">
+              <img src="<%= originalImage %>" id="originalImage" class="w-full max-w-3xl mx-auto rounded-lg shadow-xl hover:shadow-2xl transition duration-300" alt="Original Image">
+              <div class="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-center justify-center">
+                <a href="<%= originalImage %>" id="downloadOriginal" download="original.png" class="bg-blue-600 text-white py-3 px-8 rounded-lg hover:bg-blue-700 transform hover:scale-105 transition duration-300 shadow-lg">
+                  Download Original
+                </a>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-800 p-6 rounded-xl shadow-2xl">
+            <h3 class="text-2xl font-semibold text-green-400 mb-6">Background Removed</h3>
+            <div class="relative group">
+              <img src="<%= outputImage %>" alt="Output Image" class="w-full max-w-3xl mx-auto rounded-lg shadow-xl hover:shadow-2xl transition duration-300">
+              <div class="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-center justify-center">
+                <a href="<%= outputImage %>" download="removed-background.png" class="bg-green-600 text-white py-3 px-8 rounded-lg hover:bg-green-700 transform hover:scale-105 transition duration-300 shadow-lg">
+                  Download Result
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      <%_ } _%>
+    </div>
+  </div>
+
+  <script>
+    function previewImage(event) {
+      const preview = document.getElementById('preview');
+      const originalImage = document.getElementById('originalImage');
+      const downloadOriginal = document.getElementById('downloadOriginal');
+      const file = event.target.files[0];
+      const reader = new FileReader();
+      
+      reader.onload = function() {
+        preview.src = reader.result;
+        preview.classList.remove('hidden');
+        if (originalImage) {
+          originalImage.src = reader.result;
+          downloadOriginal.href = reader.result;
+        }
+      }
+      
+      if (file) {
+        reader.readAsDataURL(file);
+      }
+    }
+
+    document.getElementById('upload-form').addEventListener('submit', function(e) {
+      const submitBtn = document.getElementById('submit-btn');
+      const loading = document.getElementById('loading');
+      const errorMessage = document.getElementById('error-message');
+      
+      submitBtn.classList.add('hidden');
+      loading.classList.remove('hidden');
+      errorMessage.classList.add('hidden');
+
+      // Add error handling for the form submission
+      this.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        try {
+          const formData = new FormData(this);
+          const response = await fetch('/upload', {
+            method: 'POST',
+            body: formData
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to process image');
+          }
+
+          const result = await response.text();
+          document.documentElement.innerHTML = result;
+          
+        } catch (error) {
+          submitBtn.classList.remove('hidden');
+          loading.classList.add('hidden');
+          errorMessage.classList.remove('hidden');
+          errorMessage.textContent = error.message || 'An error occurred while processing the image';
+        }
+      });
+    });
+  </script>
+</body>
+</html>
